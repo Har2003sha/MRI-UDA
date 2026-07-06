@@ -1,0 +1,8 @@
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.51
+torch>=2.2  # for CPU-only (smaller/faster install): pip install torch --index-url https://download.pytorch.org/whl/cpu
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+Pillow==10.4.0
+psycopg2-binary==2.9.9

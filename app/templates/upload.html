@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Segment a Scan{% endblock %}
+{% block content %}
+
+<h2 class="section-title">Upload MRI Scan for Segmentation</h2>
+<div class="row">
+  <div class="col-lg-7">
+    <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" id="uploadForm">
+      <div class="upload-dropzone mb-3">
+        <p class="mb-2">📤 Choose an MRI slice image (PNG/JPG/BMP/TIFF)</p>
+        <input class="form-control" type="file" name="mri_file" accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff">
+        <p class="text-muted small mt-2 mb-0">No real scan handy? Toggle "Use synthetic sample" below to test the full pipeline instantly.</p>
+      </div>
+
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" id="useSample" name="use_sample" value="1">
+        <label class="form-check-label" for="useSample">Use a synthetic sample scan instead of uploading</label>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Source Scanner (domain)</label>
+        <select class="form-select" name="scanner_domain">
+          <option value="A">Scanner A (e.g. Siemens 1.5T) — source domain, seen during training</option>
+          <option value="B">Scanner B (e.g. GE 3T) — target domain, unseen labels (domain shift)</option>
+        </select>
+        <div class="form-text">This tells the app which scanner characteristics to simulate/expect; it does not change your uploaded image.</div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-bold">Segmentation Model</label>
+        <select class="form-select" name="model_choice">
+          <option value="uda" selected>UDA Model (Domain-Adversarial U-Net) — recommended</option>
+          <option value="baseline">Baseline U-Net (no domain adaptation)</option>
+        </select>
+        <div class="form-text">Compare both to see how domain adaptation improves cross-scanner robustness.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg w-100">Run Segmentation</button>
+    </form>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card p-3">
+      <h6 class="fw-bold">Tips</h6>
+      <ul class="small text-muted mb-0">
+        <li>Images are converted to grayscale and resized automatically.</li>
+        <li>"Scanner B / target domain" samples simulate a different scanner's intensity profile — this is where domain adaptation matters most.</li>
+        <li>Synthetic samples include ground-truth masks, so Dice/IoU scores are shown after segmentation.</li>
+        <li>Real uploaded photos won't have ground truth, so only the predicted mask & overlay are shown.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('useSample').addEventListener('change', function() {
+  const fileInput = document.querySelector('input[name="mri_file"]');
+  fileInput.disabled = this.checked;
+  fileInput.required = !this.checked;
+});
+</script>
+{% endblock %}

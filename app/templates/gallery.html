@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}All Results{% endblock %}
+{% block content %}
+
+<h2 class="section-title">All Segmentation Results ({{ results|length }})</h2>
+
+{% if not results %}
+<div class="alert alert-info">No scans segmented yet. <a href="{{ url_for('upload') }}">Segment your first scan</a>.</div>
+{% endif %}
+
+<div class="row g-3">
+  {% for r in results %}
+  <div class="col-md-3 col-6">
+    <a href="{{ url_for('view_result', result_id=r.id) }}" class="text-decoration-none">
+      <div class="card h-100">
+        <img src="{{ url_for('static', filename=r.overlay_image_path) }}" class="gallery-thumb">
+        <div class="card-body p-2">
+          <div class="mb-1">
+            <span class="badge badge-domain-{{ r.scanner_domain }}">Scanner {{ r.scanner_domain }}</span>
+            <span class="badge badge-model-{{ r.model_used }}">{{ r.model_used|upper }}</span>
+          </div>
+          <div class="small text-muted">{{ r.created_at }}</div>
+          {% if r.dice_score is not none %}
+          <div class="small">Dice: <strong>{{ r.dice_score }}</strong></div>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

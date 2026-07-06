@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Evaluation Dashboard{% endblock %}
+{% block content %}
+
+<h2 class="section-title">Evaluation Dashboard</h2>
+
+{% if not metrics %}
+<div class="alert alert-warning">
+  No trained model metrics found. Run <code>python scripts/train.py</code> first.
+</div>
+{% else %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.baseline.source_dice*100) }}%</div>
+      <div class="text-muted small">Baseline &middot; Source Dice</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.baseline.target_dice*100) }}%</div>
+      <div class="text-muted small">Baseline &middot; Target Dice</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.uda.source_dice*100) }}%</div>
+      <div class="text-muted small">UDA &middot; Source Dice</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.uda.target_dice*100) }}%</div>
+      <div class="text-muted small">UDA &middot; Target Dice</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6 class="fw-bold">Dice / IoU: Baseline vs UDA, by Domain</h6>
+      <canvas id="barChart" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6 class="fw-bold">Segmentation Loss over Training Epochs</h6>
+      <canvas id="lossChart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6 class="fw-bold">Domain Classifier Loss (UDA model)</h6>
+      <p class="small text-muted">This loss stays high/flat by design — it means the domain classifier
+      cannot easily tell Scanner-A features from Scanner-B features, i.e. the encoder has learned
+      domain-invariant features (the goal of adversarial domain adaptation).</p>
+      <canvas id="domainLossChart" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6 class="fw-bold">App Usage</h6>
+      <canvas id="usageChart" height="220"></canvas>
+      <p class="small text-muted mt-2">Total scans processed through this app: <strong>{{ total_scans }}</strong></p>
+    </div>
+  </div>
+</div>
+
+<div class="card p-3">
+  <h6 class="fw-bold">Summary</h6>
+  <p class="mb-1">Domain adaptation improved target-scanner Dice by
+    <strong>{{ "%.1f"|format(metrics.target_dice_improvement*100) }} percentage points</strong>
+    ({{ "%.3f"|format(metrics.baseline.target_dice) }} &rarr; {{ "%.3f"|format(metrics.uda.target_dice) }})
+    without using any Scanner-B (target domain) labels during training.</p>
+  <p class="mb-0 text-muted small">Models trained: {{ metrics.trained_at }} &middot; Training time: {{ metrics.train_seconds }}s</p>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if metrics %}
+<script>
+const metrics = {{ metrics | tojson }};
+const domainCounts = {{ domain_counts | tojson }};
+const modelCounts = {{ model_counts | tojson }};
+
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Source Dice', 'Source IoU', 'Target Dice', 'Target IoU'],
+    datasets: [
+      {
+        label: 'Baseline (no adaptation)',
+        backgroundColor: '#6c757d',
+        data: [metrics.baseline.source_dice, metrics.baseline.source_iou, metrics.baseline.target_dice, metrics.baseline.target_iou]
+      },
+      {
+        label: 'UDA (DANN)',
+        backgroundColor: '#14336b',
+        data: [metrics.uda.source_dice, metrics.uda.source_iou, metrics.uda.target_dice, metrics.uda.target_iou]
+      }
+    ]
+  },
+  options: { scales: { y: { beginAtZero: true, max: 1 } } }
+});
+
+const epochs = metrics.baseline.loss_history.map((_, i) => 'Epoch ' + (i+1));
+new Chart(document.getElementById('lossChart'), {
+  type: 'line',
+  data: {
+    labels: epochs,
+    datasets: [
+      {
+        label: 'Baseline seg loss',
+        borderColor: '#6c757d',
+        data: metrics.baseline.loss_history,
+        tension: 0.3
+      },
+      {
+        label: 'UDA seg loss',
+        borderColor: '#14336b',
+        data: metrics.uda.loss_history.map(h => h.seg_loss),
+        tension: 0.3
+      }
+    ]
+  }
+});
+
+new Chart(document.getElementById('domainLossChart'), {
+  type: 'line',
+  data: {
+    labels: epochs,
+    datasets: [{
+      label: 'Domain classifier loss (higher/flatter = more domain-invariant)',
+      borderColor: '#ffb84d',
+      data: metrics.uda.loss_history.map(h => h.domain_loss),
+      tension: 0.3
+    }]
+  }
+});
+
+new Chart(document.getElementById('usageChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Scanner A scans', 'Scanner B scans', 'Baseline model used', 'UDA model used'],
+    datasets: [{
+      backgroundColor: ['#2fd3c9', '#ffb84d', '#6c757d', '#14336b'],
+      data: [domainCounts.A, domainCounts.B, modelCounts.baseline, modelCounts.uda]
+    }]
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

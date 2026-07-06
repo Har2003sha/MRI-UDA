@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Home - MRI-UDA Seg{% endblock %}
+{% block content %}
+
+<div class="hero">
+  <h1>Cross-Scanner MRI Segmentation <span class="accent">using Unsupervised Domain Adaptation</span></h1>
+  <p class="lead mb-4">
+    Upload a brain MRI slice from any scanner and get an automated tumor segmentation —
+    powered by a U-Net trained with a Gradient-Reversal domain-adversarial network (DANN)
+    so it generalizes across scanner vendors / field strengths without needing labels
+    from every scanner.
+  </p>
+  <a href="{{ url_for('upload') }}" class="btn btn-warning btn-lg fw-bold me-2">Segment a Scan</a>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light btn-lg">View Evaluation Dashboard</a>
+</div>
+
+{% if metrics %}
+<h4 class="section-title">Model Performance Snapshot</h4>
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.baseline.target_dice*100) }}%</div>
+      <div class="text-muted small">Baseline Dice (Target Scanner)</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.uda.target_dice*100) }}%</div>
+      <div class="text-muted small">UDA Dice (Target Scanner)</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">+{{ "%.1f"|format(metrics.target_dice_improvement*100) }}%</div>
+      <div class="text-muted small">Dice Gain from Domain Adaptation</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ "%.1f"|format(metrics.uda.source_dice*100) }}%</div>
+      <div class="text-muted small">UDA Dice (Source Scanner)</div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+  Models haven't been trained yet. Run <code>python scripts/train.py</code> to train the baseline
+  and UDA models and populate this dashboard.
+</div>
+{% endif %}
+
+<h4 class="section-title">How it works</h4>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="pipeline-step"><strong>1. Upload</strong><br><span class="text-muted small">MRI slice from any scanner (or try a synthetic sample)</span></div></div>
+  <div class="col-md-3"><div class="pipeline-step"><strong>2. Preprocess</strong><br><span class="text-muted small">Grayscale + resize + normalize</span></div></div>
+  <div class="col-md-3"><div class="pipeline-step"><strong>3. UDA Segmentation</strong><br><span class="text-muted small">Domain-invariant U-Net predicts tumor mask</span></div></div>
+  <div class="col-md-3"><div class="pipeline-step"><strong>4. Visualize & Evaluate</strong><br><span class="text-muted small">Overlay + Dice/IoU on the dashboard</span></div></div>
+</div>
+
+{% if recent %}
+<h4 class="section-title">Recent Scans</h4>
+<div class="row g-3">
+  {% for r in recent %}
+  <div class="col-md-4 col-6">
+    <a href="{{ url_for('view_result', result_id=r.id) }}" class="text-decoration-none">
+      <div class="card">
+        <img src="{{ url_for('static', filename=r.overlay_image_path) }}" class="gallery-thumb">
+        <div class="card-body p-2">
+          <span class="badge badge-domain-{{ r.scanner_domain }}">Scanner {{ r.scanner_domain }}</span>
+          <span class="badge badge-model-{{ r.model_used }}">{{ r.model_used|upper }}</span>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Segmentation Result{% endblock %}
+{% block content %}
+
+<h2 class="section-title">Segmentation Result</h2>
+<div class="mb-3">
+  <span class="badge badge-domain-{{ r.scanner_domain }}">Scanner {{ r.scanner_domain }}</span>
+  <span class="badge badge-model-{{ r.model_used }}">{{ r.model_used|upper }} model</span>
+  <span class="text-muted small ms-2">{{ r.created_at }}</span>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <p class="fw-bold mb-1">Input MRI Slice</p>
+    <img src="{{ url_for('static', filename=r.input_image_path) }}" class="img-result">
+  </div>
+  <div class="col-md-4">
+    <p class="fw-bold mb-1">Predicted Tumor Mask</p>
+    <img src="{{ url_for('static', filename=r.mask_image_path) }}" class="img-result">
+  </div>
+  <div class="col-md-4">
+    <p class="fw-bold mb-1">Overlay (red = predicted tumor{% if r.dice_score is not none %}, green outline = ground truth{% endif %})</p>
+    <img src="{{ url_for('static', filename=r.overlay_image_path) }}" class="img-result">
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ r.tumor_pixel_count }}</div>
+      <div class="text-muted small">Tumor Pixels</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ r.tumor_area_percent }}%</div>
+      <div class="text-muted small">Tumor Area (% of slice)</div>
+    </div>
+  </div>
+  {% if r.dice_score is not none %}
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ r.dice_score }}</div>
+      <div class="text-muted small">Dice Score (vs ground truth)</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card card-metric p-3 text-center">
+      <div class="metric-value">{{ r.iou_score }}</div>
+      <div class="text-muted small">IoU Score (vs ground truth)</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-md-6">
+    <div class="alert alert-secondary mb-0">
+      No ground-truth mask available for real uploaded images — Dice/IoU shown only for synthetic sample scans.
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="mt-4">
+  <a href="{{ url_for('upload') }}" class="btn btn-primary">Segment Another Scan</a>
+  <a href="{{ url_for('results_gallery') }}" class="btn btn-outline-secondary">View All Results</a>
+</div>
+
+{% endblock %}

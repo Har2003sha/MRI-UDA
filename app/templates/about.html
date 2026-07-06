@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}About / Architecture{% endblock %}
+{% block content %}
+
+<h2 class="section-title">Project Architecture</h2>
+
+<div class="card p-4 mb-4">
+  <h5 class="fw-bold">Title</h5>
+  <p>Cross-Scanner MRI Segmentation using Unsupervised Domain Adaptation</p>
+
+  <h5 class="fw-bold mt-3">Problem Statement</h5>
+  <p>Tumor segmentation models trained on MRI scans from one scanner (vendor/field strength/protocol)
+  often degrade sharply when applied to scans from a different scanner, because of intensity, contrast,
+  and noise differences — a phenomenon called <em>domain shift</em>. Collecting pixel-level tumor labels
+  for every scanner is expensive. This project uses <strong>Unsupervised Domain Adaptation (UDA)</strong>
+  to train a segmentation model that generalizes to a new ("target") scanner using only unlabeled images
+  from it, while labels are only required from the original ("source") scanner.</p>
+
+  <h5 class="fw-bold mt-3">Approach: Domain-Adversarial Neural Network (DANN)</h5>
+  <p>A single U-Net encoder-decoder is extended with a second head — a domain classifier — attached to
+  the bottleneck features through a <strong>Gradient Reversal Layer (GRL)</strong>. During training:</p>
+  <ul>
+    <li>The segmentation head is trained (with Dice + BCE loss) only on labeled <strong>source-domain</strong> images.</li>
+    <li>The domain classifier is trained to distinguish source vs target features (standard cross-entropy).</li>
+    <li>The GRL flips the gradient sign flowing back from the domain classifier into the shared encoder,
+    so the encoder is pushed to produce features the domain classifier <em>cannot</em> tell apart —
+    i.e. domain-invariant features that transfer across scanners.</li>
+  </ul>
+
+  <h5 class="fw-bold mt-3">Tech Stack</h5>
+  <ul>
+    <li><strong>Deep Learning</strong>: PyTorch (U-Net + GRL domain-adversarial training, DANN)</li>
+    <li><strong>Classical ML metrics</strong>: Dice coefficient, IoU (Jaccard index) for evaluation</li>
+    <li><strong>Backend</strong>: Flask (Python) — REST-ish routes for upload, inference, results, dashboard</li>
+    <li><strong>Database</strong>: PostgreSQL (via SQLAlchemy) — falls back to SQLite for zero-config local runs</li>
+    <li><strong>Frontend</strong>: Server-rendered HTML (Jinja2) + Bootstrap 5 + Chart.js for the evaluation dashboard</li>
+    <li><strong>Image processing</strong>: OpenCV / Pillow / NumPy for preprocessing and overlay visualization</li>
+  </ul>
+
+  <h5 class="fw-bold mt-3">Dataset</h5>
+  <p>Real cross-scanner brain-tumor MRI datasets (e.g. BraTS with multi-institution scanners) require
+  licensed access and large downloads. To make the project runnable end-to-end without external data,
+  a <strong>synthetic multi-scanner MRI generator</strong> (<code>data/synthetic_mri.py</code>) creates
+  structurally realistic brain-slice images with tumor masks, then applies scanner-specific intensity
+  transforms (gamma, bias field, noise) to simulate the domain gap between "Scanner A" (source, labeled)
+  and "Scanner B" (target, unlabeled during training). The same pipeline works unchanged on real MRI
+  slices — just point the training script at a real labeled dataset for the source domain and real
+  unlabeled images for the target domain.</p>
+
+  <h5 class="fw-bold mt-3">Evaluation</h5>
+  <p>A baseline U-Net (source-only, no adaptation) and the UDA/DANN model are both trained and evaluated
+  on held-out source and target domain data. The dashboard reports Dice score and IoU for both models on
+  both domains, showing the Dice-score improvement that domain adaptation provides on the unseen target
+  scanner.</p>
+</div>
+
+<div class="card p-4">
+  <h5 class="fw-bold">Suggested Report Sections</h5>
+  <ol>
+    <li>Introduction & Motivation (why domain shift matters clinically)</li>
+    <li>Literature Survey (DANN — Ganin et al. 2016; CORAL; AdaptSegNet; cross-scanner MRI harmonization)</li>
+    <li>System Architecture (this page + block diagram)</li>
+    <li>Methodology (U-Net, GRL, adversarial training schedule)</li>
+    <li>Implementation (Flask + PostgreSQL + PyTorch, as shown in this codebase)</li>
+    <li>Results & Evaluation (Dice/IoU tables & charts, from the Dashboard page)</li>
+    <li>Conclusion & Future Work (real BraTS multi-site data, 3D volumes, more scanners)</li>
+  </ol>
+</div>
+
+{% endblock %}
